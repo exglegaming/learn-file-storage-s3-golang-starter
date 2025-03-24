@@ -1,14 +1,10 @@
 package main
 
 import (
-	"bytes"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -50,49 +46,4 @@ func mediaTypeToExt(mediaType string) string {
 		return ".bin"
 	}
 	return "." + parts[1]
-}
-
-func getVideoAspectRatio(filepath string) (string, error) {
-	var cmdBuffer bytes.Buffer
-	cmd := exec.Command("ffprobe", "-v", "error", "-print_format", "json", "-show_streams", filepath)
-	cmd.Stdout = &cmdBuffer
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	var probeData struct {
-		Streams []struct {
-			Width  int `json:"width"`
-			Height int `json:"height"`
-		} `json:"streams"`
-	}
-	err = json.Unmarshal(cmdBuffer.Bytes(), &probeData)
-	if err != nil {
-		return "", err
-	}
-
-	if len(probeData.Streams) == 0 {
-		return "", errors.New("no streams found")
-	}
-
-	width := probeData.Streams[0].Width
-	height := probeData.Streams[0].Height
-
-	if width > height && float32(width)/float32(height) >= 1.7 && float32(width)/float32(height) <= 1.8 {
-		return "16:9", nil
-	} else if height > width && float32(height)/float32(width) >= 1.7 && float32(height)/float32(width) <= 1.8 {
-		return "9:16", nil
-	} else {
-		return "other", nil
-	}
-}
-
-func processVideoForFastStart(filepath string) (string, error) {
-	outputPath := filepath + ".processing"
-	cmd := exec.Command("ffmpeg", "-i", filepath, "-c", "copy", "-movflags", "faststart", "-f", "mp4", outputPath)
-	err := cmd.Run()
-	if err != nil {
-		return "", err
-	}
-	return outputPath, nil
 }
